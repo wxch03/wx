@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台 - 万兴财富核销商城</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0F0F1A;
+            --bg-sidebar: #1A1A2E;
+            --bg-card: #24243F;
+            --accent-blue: #2584F8;
+            --accent-green: #00C48C;
+            --accent-orange: #FF9500;
+            --text-primary: #FFFFFF;
+            --text-secondary: #A8A8C7;
+            --border-color: #38385C;
+        }
+        * { box-sizing: border-box; }
+        body {
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            min-height: 100vh;
+        }
+        .login-bg {
+            background: linear-gradient(135deg, #0F0F1A 0%, #1A1A2E 100%);
+        }
+        .sidebar-item {
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+        .sidebar-item:hover, .sidebar-item.active {
+            background: rgba(37, 132, 248, 0.1);
+            border-left-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+        .stat-card {
+            background: linear-gradient(135deg, var(--bg-card), rgba(36, 36, 63, 0.6));
+            border: 1px solid var(--border-color);
+        }
+        .status-pending { background: rgba(255, 149, 0, 0.15); color: #FF9500; }
+        .status-success { background: rgba(0, 196, 140, 0.15); color: #00C48C; }
+        .status-failed { background: rgba(255, 77, 79, 0.15); color: #FF4D4F; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            z-index: 9999;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 登录页面 -->
+<div id="login-page" class="login-bg min-h-screen flex items-center justify-center">
+    <div class="w-full max-w-md px-6">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold mb-2">万兴财富核销商城</h1>
+            <p class="text-[var(--text-secondary)]">管理后台登录</p>
+        </div>
+        <div class="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-8 shadow-xl">
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-sm text-[var(--text-secondary)] mb-2">
+                        <i class="ri-user-line mr-2"></i>管理员账号
+                    </label>
+                    <input type="text" id="admin-username" 
+                           class="w-full px-4 py-3 rounded-lg bg-[var(--bg-sidebar)] border border-[var(--border-color)] text-white focus:outline-none focus:border-[var(--accent-blue)]"
+                           placeholder="请输入账号">
+                </div>
+                <div>
+                    <label class="block text-sm text-[var(--text-secondary)] mb-2">
+                        <i class="ri-lock-line mr-2"></i>登录密码
+                    </label>
+                    <input type="password" id="admin-password" 
+                           class="w-full px-4 py-3 rounded-lg bg-[var(--bg-sidebar)] border border-[var(--border-color)] text-white focus:outline-none focus:border-[var(--accent-blue)]"
+                           placeholder="请输入密码" onkeypress="if(event.key==='Enter') login()">
+                </div>
+                <button onclick="login()" 
+                        class="w-full py-3 rounded-lg bg-[var(--accent-blue)] hover:bg-[#1a75e8] text-white font-semibold transition">
+                    <i class="ri-login-box-line mr-2"></i>登录后台
+                </button>
+                <p class="text-xs text-[var(--text-secondary)] text-center mt-4">
+                    默认账号：admin &nbsp;|&nbsp; 密码：admin123
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 主后台界面 -->
+<div id="admin-layout" class="hidden min-h-screen flex">
+    <!-- 侧边栏 -->
+    <aside class="w-64 bg-[var(--bg-sidebar)] border-r border-[var(--border-color)] fixed h-full z-10">
+        <div class="p-4 border-b border-[var(--border-color)]">
+            <h2 class="text-lg font-bold flex items-center gap-2">
+                <i class="ri-shield-user-line text-[var(--accent-blue)] text-xl"></i>
+                管理后台
+            </h2>
+            <p class="text-xs text-[var(--text-secondary)] mt-1" id="admin-welcome">欢迎，管理员</p>
+        </div>
+        <nav class="mt-4">
+            <div class="sidebar-item active px-5 py-3 cursor-pointer flex items-center gap-3" onclick="switchTab('dashboard')">
+                <i class="ri-dashboard-line text-lg"></i>
+                <span>数据概览</span>
+            </div>
+            <div class="sidebar-item px-5 py-3 cursor-pointer flex items-center gap-3" onclick="switchTab('orders')">
+                <i class="ri-list-check text-lg"></i>
+                <span>订单管理</span>
+            </div>
+            <div class="sidebar-item px-5 py-3 cursor-pointer flex items-center gap-3" onclick="switchTab('announcement')">
+                <i class="ri-notification-3-line text-lg"></i>
+                <span>公告设置</span>
+            </div>
+            <div class="sidebar-item px-5 py-3 cursor-pointer flex items-center gap-3" onclick="switchTab('settings')">
+                <i class="ri-settings-3-line text-lg"></i>
+                <span>系统设置</span>
+            </div>
+            <div class="sidebar-item px-5 py-3 cursor-pointer flex items-center gap-3 text-red-400 mt-8" onclick="logout()">
+                <i class="ri-logout-box-r-line text-lg"></i>
+                <span>退出登录</span>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main class="flex-1 ml-64 p-6">
+        <!-- 顶部 -->
+        <div class="flex justify-between items-center mb-8">
+            <h3 class="text-xl font-semibold" id="page-title">数据概览</h3>
+            <div class="flex items-center gap-4">
+                <span class="text-sm text-[var(--text-secondary)]" id="current-time"></span>
+                <button onclick="logout()" class="text-sm text-red-400 hover:text-red-300">
+                    <i class="ri-logout-box-line mr-1"></i>退出
+                </button>
+            </div>
+        </div>
+
+        <!-- 数据概览页 -->
+        <div id="page-dashboard" class="page active">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                <div class="stat-card rounded-xl p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-3xl text-[var(--accent-blue)]"><i class="ri-file-list-3-line"></i></span>
+                        <span class="text-xs text-[var(--accent-green)] bg-green-500/10 px-2 py-0.5 rounded-full">今日</span>
+                    </div>
+                    <p class="text-2xl font-bold">12</p>
+                    <p class="text-sm text-[var(--text-secondary)] mt-1">今日订单数</p>
+                </div>
+                <div class="stat-card rounded-xl p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-3xl text-[var(--accent-green)]"><i class="ri-money-dollar-circle-line"></i></span>
+                        <span class="text-xs text-[var(--accent-green)] bg-green-500/10 px-2 py-0.5 rounded-full">+12.5%</span>
+                    </div>
+                    <p class="text-2xl font-bold">¥8,540</p>
+                    <p class="text-sm text-[var(--text-secondary)] mt-1">今日成交额</p>
+                </div>
+                <div class="stat-card rounded-xl p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-3xl text-[var(--accent-orange)]"><i class="ri-time-line"></i></span>
+                    </div>
+                    <p class="text-2xl font-bold">3</p>
+                    <p class="text-sm text-[var(--text-secondary)] mt-1">待处理订单</p>
+                </div>
+                <div class="stat-card rounded-xl p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-3xl text-purple-400"><i class="ri-check-double-line"></i></span>
+                    </div>
+                    <p class="text-2xl font-bold">1,258</p>
+                    <p class="text-sm text-[var(--text-secondary)] mt-1">累计完成</p>
+                </div>
+            </div>
+
+            <div class="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-5">
+                <h4 class="font-semibold mb-4">最近订单</h4>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-[var(--text-secondary)] text-left border-b border-[var(--border-color)]">
+                                <th class="pb-3 font-medium">订单号</th>
+                                <th class="pb-3 font-medium">类型</th>
+                                <th class="pb-3 font-medium">金额</th>
+                                <th class="pb-3 font-medium">状态</th>
+                                <th class="pb-3 font-medium">时间</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-orders">
+                            <!-- 动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 订单管理页 -->
+        <div id="page-orders" class="page">
+            <div class="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-5 mb-5">
+                <div class="flex flex-wrap gap-3 mb-4">
+                    <input type="text" id="search-order" placeholder="搜索订单号/用户名..." 
+                           class="px-4 py-2 rounded-lg bg-[var(--bg-sidebar)] border border-[var(--border-color)] text-sm flex-1 min-w-[200px]">
+                    <select class="px-4 py-2 rounded-lg bg-[var(--bg-sidebar)] border border-[var(--border-color)] text-sm">
+                        <option value="">全部状态</option>
+                        <option value="pending">处理中</option>
+                        <option value="success">已完成</option>
+                        <option value="failed">已失败</option>
+                    </select>
+                    <button onclick="showToast('搜索成功')" class="px-4 py-2 bg-[var(--accent-blue)] rounded-lg text-sm">
+                        <i class="ri-search-line mr-1"></i>搜索
+                    </button>
+                </div>
+            </div>
+            <div class="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-[var(--bg-sidebar)]">
+                            <tr class="text-[var(--text-secondary)] text-left">
+                                <th class="px-4 py-3 font-medium">订单号</th>
+                                <th class="px-4 py-3 font-medium">服务类型</th>
+                                <th class="px-4 py-3 font-medium">用户信息</th>
+                                <th class="px-4 py-3 font-medium">金额</th>
+                                <th class="px-4 py-3 font-medium">支付方式</th>
+                                <th class="px-4 py-3 font-medium">状态</th>
+                                <th class="px-4 py-3 font-medium">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-table">
+                            <!-- 动态生成 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 公告设置页 -->
+        <div id="page-announcement" class="page">
+            <div class="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-5">
+                <h4 class="font-semibold mb-4">🛍️ 首页公告管理</h4>
+                <textarea id="announcement-content" rows="8" 
+                          class="w-full px-4 py-3 rounded-lg bg-[var(--bg-sidebar)] border border-[var(--border-color)] text-sm mb-4"
+                          placeholder="输入公告内容...">🛍️ 下单须知 
+支付方式： 如果支付宝通道风控，请用USDT 支付。
+注意：本工作室只使用Telegram，QQ等联系方式其他平台全部为冒充！谨防上当受骗！付款后请留意邮箱信息或TG信息。
+
+注意：如需退款请联系客服
+
+有任何问题请及时联系客服</textarea>
+                <div class="flex gap-3">
+                    <button onclick="saveAnnouncement()" class="px-5 py-2 bg-[var(--accent-blue)] rounded-lg text-sm font-medium">
+                        <i class="ri-save-line mr-1"></i>保存公告
+                    </button>
+                    <button onclick="resetAnnouncement()" class="px-5 py-2 bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-lg text-sm">
+                        <i class="ri-refresh-line mr-1"></i>恢复默认
+                    </button>
+                </div>
+                <p class="text-xs text-[var(--text-secondary)] mt-3">💡 提示：静态版本仅保存在本地浏览器中</p>
+            </div>
+        </div>
+
+        <!-- 系统设置页 -->
+        <div id="page-settings" class="page">
+            <div class="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-5 mb-5">
+                <h4 class="font-semibold mb-4">🔐 修改管理员密码</h4>
+                <div class="space-y-4 max-w-md">
+                    <div>
+                        <label class="block text-sm text-[var(--text-secondary)] mb-2">当前密码</label>
+                        <input type="password" id="old-pwd" class="w-full px-4 py-2 rounded-lg bg-[var(--bg-sidebar)] border border-[var(--border-color)] text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-[var(--text-secondary)] mb-2">新密码</label>
+                        <input type="password" id="new-pwd" class="w-full px-4 py-2 rounded-lg bg-[var(--bg-sidebar)] border border-[var(--border-color)] text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-[var(--text-secondary)] mb-2">确认新密码</label>
+                        <input type="password" id="confirm-pwd" class="w-full px-4 py-2 rounded-lg bg-[var(--bg-sidebar)] border border-[var(--border-color)] text-sm">
+                    </div>
+                    <button onclick="changePassword()" class="px-5 py-2 bg-[var(--accent-blue)] rounded-lg text-sm font-medium">
+                        <i class="ri-lock-password-line mr-1"></i>修改密码
+                    </button>
+                </div>
+            </div>
+            <div  class="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-5">
+                <h4 class="font-semibold mb-4">ℹ️ 系统信息</h4>
+                <div class="space-y-2 text-sm text-[var(--text-secondary)]">
+                    <p>系统版本：v1.0.0</p>
+                    <p>技术架构：纯静态 HTML + JavaScript</p>
+                    <p>数据存储：浏览器本地存储 (LocalStorage)</p>
+                    <p>托管平台：GitHub Pages</p>
+                    <p class="text-yellow-400 mt-2">⚠️ 提示：本后台为演示版本，数据仅保存在当前浏览器中。如需真实后台功能，请部署后端服务。</p>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Toast 提示 -->
+<div id="toast-container"></div>
+
+<script>
+// ===== 模拟订单数据 =====
+const mockOrders = [
+    { id: 'ORD20261030001', type: '花呗代还', user: 'user***@gmail.com', amount: '¥1,000.00', status: 'success', time: '2026-10-30 18:30:12' },
+    { id: 'ORD20261030002', type: '美团金融代还', user: 'tel***@163.com', amount: '¥3,000.00', status: 'pending', time: '2026-10-30 19:15:45' },
+    { id: 'ORD20261030003', type: '抖音月付代还', user: 's***@outlook.com', amount: '¥5,000.00', status: 'success', time: '2026-10-30 20:08:33' },
+    { id: 'ORD20261030004', type: '拍拍贷代还', user: 'anon***@qq.com', amount: '¥5,000.00', status: 'failed', time: '2026-10-30 21:22:18' },
+    { id: 'ORD20261030005', type: '安逸花代还', user: 'new***@138.com', amount: '¥10,000.00', status: 'pending', time: '2026-10-30 22:10:05' }
+];
+
+// ===== 默认账号信息 =====
+const DEFAULT_USER = { username: 'admin', password: 'admin123' };
+
+// ===== 初始化 =====
+function init() {
+    updateTime();
+    setInterval(updateTime, 1000);
+    loadOrders();
+    loadAnnouncement();
+}
+
+// ===== 更新时间 =====
+function updateTime() {
+    const now = new Date();
+    const timeStr = now.toLocaleString('zh-CN', { 
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+    const el = document.getElementById('current-time');
+    if (el) el.textContent = timeStr;
+}
+
+// ===== 登录 =====
+function login() {
+    const username = document.getElementById('admin-username').value.trim();
+    const password = document.getElementById('admin-password').value;
+    
+    // 优先使用本地存储的密码，没有则用默认
+    const savedPwd = localStorage.getItem('admin_password') || DEFAULT_USER.password;
+    
+    if (username === DEFAULT_USER.username && password === savedPwd) {
+        localStorage.setItem('admin_logged_in', 'true');
+        showToast('✅ 登录成功！', 'success');
+        setTimeout(() => {
+            document.getElementById('login-page').classList.add('hidden');
+            document.getElementById('admin-layout').classList.remove('hidden');
+            init();
+        }, 500);
+    } else {
+        showToast('❌ 账号或密码错误！', 'error');
+    }
+}
+
+// ===== 退出登录 =====
+function logout() {
+    localStorage.removeItem('admin_logged_in');
+    document.getElementById('admin-layout').classList.add('hidden');
+    document.getElementById('login-page').classList.remove('hidden');
+    document.getElementById('admin-username').value = '';
+    document.getElementById('admin-password').value = '';
+    showToast('已退出登录');
+}
+
+// ===== 切换标签页 =====
+function switchTab(tabName) {
+    // 更新侧边栏高亮
+    document.querySelectorAll('.sidebar-item').forEach(item => item.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    
+    // 更新页面显示
+    document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+    document.getElementById(`page-${tabName}`).classList.add('active');
+    
+    // 更新标题
+    const titles = {
+        dashboard: '数据概览',
+        orders: '订单管理',
+        announcement: '公告设置',
+        settings: '系统设置'
+    };
+    document.getElementById('page-title').textContent = titles[tabName];
+}
+
+// ===== 加载订单 =====
+function loadOrders() {
+    // 最近订单（前3条）
+    const recentHtml = mockOrders.slice(0, 3).map(order => `
+        <tr class="border-b border-[var(--border-color)]">
+            <td class="py-3">${order.id}</td>
+            <td class="py-3">${order.type}</td>
+            <td class="py-3">${order.amount}</td>
+            <td class="py-3">
+                <span class="px-2 py-0.5 rounded-full text-xs font-medium status-${order.status}">
+                    ${order.status === 'pending' ? '处理中' : order.status === 'success' ? '已完成' : '已失败'}
+                </span>
+            </td>
+            <td class="py-3 text-xs text-[var(--text-secondary)]">${order.time}</td>
+        </tr>
+    `).join('');
+    document.getElementById('recent-orders').innerHTML = recentHtml;
+    
+    // 全部订单
+    const allHtml = mockOrders.map(order => `
+        <tr class="border-b border-[var(--border-color)] hover:bg-[var(--bg-sidebar)]/50">
+            <td class="px-4 py-3 text-xs font-mono">${order.id}</td>
+            <td class="px-4 py-3 text-sm">${order.type}</td>
+            <td class="px-4 py-3 text-xs text-[var(--text-secondary)]">${order.user}</td>
+            <td class="px-4 py-3 text-sm font-medium">${order.amount}</td>
+            <td class="px-4 py-3 text-xs">USDT</td>
+            <td class="px-4 py-3">
+                <span class="px-2 py-0.5 rounded-full text-xs font-medium status-${order.status}">
+                    ${order.status === 'pending' ? '处理中' : order.status === 'success' ? '已完成' : '已失败'}
+                </span>
+            </td>
+            <td class="px-4 py-3">
+                <button class="text-xs text-[var(--accent-blue)] hover:underline mr-2" onclick="viewOrder('${order.id}')">查看</button>
+                ${order.status === 'pending' 
+                    ? `<button class="text-xs text-[var(--accent-green)] hover:underline" onclick="completeOrder('${order.id}')">完成</button>` 
+                    : ''}
+            </td>
+        </tr>
+    `).join('');
+    document.getElementById('orders-table').innerHTML = allHtml;
+}
+
+// ===== 订单操作 =====
+function viewOrder(orderId) {
+    showToast(`查看订单：${orderId}`);
+}
+
+function completeOrder(orderId) {
+    const order = mockOrders.find(o => o.id === orderId);
+    if (order) {
+        order.status = 'success';
+        loadOrders();
+        showToast(`✅ 订单 ${orderId} 已标记为完成`, 'success');
+    }
+}
+
+// ===== 公告管理 =====
+function saveAnnouncement() {
+    const content = document.getElementById('announcement-content').value;
+    localStorage.setItem('site_announcement', content);
+    showToast('✅ 公告已保存！', 'success');
+}
+
+function loadAnnouncement() {
+    const saved = localStorage.getItem('site_announcement');
+    if (saved) {
+        document.getElementById('announcement-content').value = saved;
+    }
+}
+
+function resetAnnouncement() {
+    const defaultText = `🛍️ 下单须知 
+支付方式： 如果支付宝通道风控，请用USDT 支付。
+注意：本工作室只使用Telegram，QQ等联系方式其他平台全部为冒充！谨防上当受骗！付款后请留意邮箱信息或TG信息。
+
+注意：如需退款请联系客服
+
+有任何问题请及时联系客服`;
+    document.getElementById('announcement-content').value = defaultText;
+    localStorage.removeItem('site_announcement');
+    showToast('已恢复默认公告');
+}
+
+// ===== 修改密码 =====
+function changePassword() {
+    const oldPwd = document.getElementById('old-pwd').value;
+    const newPwd = document.getElementById('new-pwd').value;
+    const confirmPwd = document.getElementById('confirm-pwd').value;
+    
+    const currentPwd = localStorage.getItem('admin_password') || DEFAULT_USER.password;
+    
+    if (oldPwd !== currentPwd) {
+        showToast('❌ 当前密码错误！', 'error');
+        return;
+    }
+    if (newPwd.length < 6) {
+        showToast('❌ 新密码至少6位！', 'error');
+        return;
+    }
+    if (newPwd !== confirmPwd) {
+        showToast('❌ 两次输入不一致！', 'error');
+        return;
+    }
+    
+    localStorage.setItem('admin_password', newPwd);
+    document.getElementById('old-pwd').value = '';
+    document.getElementById('new-pwd').value = '';
+    document.getElementById('confirm-pwd').value = '';
+    showToast('✅ 密码修改成功！', 'success');
+}
+
+// ===== Toast 提示 =====
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    
+    const bgColors = {
+        success: 'bg-green-600',
+        error: 'bg-red-600',
+        info: 'bg-[var(--accent-blue)]'
+    };
+    
+    toast.className = `toast ${bgColors[type]} text-white px-4 py-3 rounded-lg shadow-lg`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// ===== 页面加载时检查登录状态 =====
+window.onload = function() {
+    const isLoggedIn = localStorage.getItem('admin_logged_in') === 'true';
+    if (isLoggedIn) {
+        document.getElementById('login-page').classList.add('hidden');
+        document.getElementById('admin-layout').classList.remove('hidden');
+        init();
+    }
+};
+</script>
+
+</body>
+</html>
